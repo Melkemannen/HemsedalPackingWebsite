@@ -4,15 +4,24 @@
    ============================================ */
 
 :root {
-  /* ── Palette (placeholder — refine in Phase 1) ── */
-  --color-bg: #0a0f14;
-  --color-surface: #111820;
+  /* ── Palette — Hemsedal winter landscape ── */
+  /* Core terrain palette (🎨 A — refine via Leva) */
+  --color-snow: #e8edf2; /* Snow caps, highlights */
+  --color-rock: #3a4250; /* Exposed rock, steep faces */
+  --color-grass: #2d4a3e; /* Alpine ground (muted green) */
+  --color-valley: #1a2028; /* Low areas, shadowed valleys */
+  --color-fog: #2a3542; /* Atmospheric fog */
+
+  /* Sky palette */
+  --color-sky-top: #1c2836; /* Sky zenith */
+  --color-sky-hor: #4a6076; /* Sky horizon */
+
+  /* UI palette */
+  --color-bg: var(--color-valley);
+  --color-surface: #151b24;
   --color-text: #e8edf2;
-  --color-text-muted: #8a97a5;
-  --color-accent: #4da3ff;
-  --color-snow: #f0f4f8;
-  --color-rock: #3a4250;
-  --color-grass: #2d4a3e;
+  --color-text-muted: #7a8a9a;
+  --color-accent: #e8a54b; /* Warm amber — cabin lights, highlights */
 
   /* ── Typography ── */
   --font-display: var(--font-geist-sans), system-ui, sans-serif;
