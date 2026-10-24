@@ -29,7 +29,7 @@ So "a website like basement.studio" = *a small 3D world + a camera choreography 
 | **Scroll / motion** | Lenis (smooth scroll) + GSAP ScrollTrigger (camera timeline) + Motion for UI | Scroll drives a GSAP timeline that scrubs camera position along a path |
 | **3D assets (if modeling)** | Blender → glTF + Draco + KTX2 textures | Industry standard pipeline; basement does exactly this |
 | **State** | Zustand | Lightweight; basement uses it to bridge DOM ↔ 3D state |
-| **Styling** | Tailwind CSS (+ custom fonts, self-hosted) | Fast iteration, no CSS fights |
+| **Styling** | CSS Modules + design tokens in CSS custom properties | Zero runtime, zero dependencies, fully custom art direction (see §2.1) |
 | **CMS / content** | Sanity (or Basehub) — or plain MDX to start | Sections, blog posts, showcase entries editable without deploys |
 | **Backend needs** | Minimal: server actions / API routes for contact form + email (e.g. Resend), optional newsletter | A studio site is 95% static; don't build a real backend until needed |
 | **Analytics** | Vercel Analytics or PostHog | Lightweight, privacy-friendly |
@@ -37,6 +37,27 @@ So "a website like basement.studio" = *a small 3D world + a camera choreography 
 | **Dev tooling** | ESLint, Prettier, `r3f-perf` (in-dev FPS/draw-call meter), git LFS for heavy assets | Keep 3D perf visible during development |
 
 **Backend reality check:** the "backend" for this site is mostly a CDN. Content comes from the CMS, the contact form is one serverless function, and everything else is static assets. Spend your effort on the frontend and the scene, not on servers.
+
+### 2.1 Styling: CSS Modules + CSS custom properties (no Tailwind)
+
+Utility CSS fights you on art-directed sites anyway — this project needs bespoke layout, typography, and scroll-linked animation, not utility classes.
+
+**Structure:**
+
+- **`styles/tokens.css`** (global, imported once in the root layout): the entire design system as CSS custom properties — palette, type scale (`--font-display`, `--step-0…--step-6`), spacing rhythm, z-index layers (`--z-canvas`, `--z-content`, `--z-nav`), easing curves, breakpoints. This file *is* the brand, mirroring the shader palette.
+- **CSS Modules** per component (`Hero.module.css`, `Nav.module.css`) — scoped class names, colocated with components, zero runtime cost.
+- **`styles/base.css`**: a modern reset (`@layer reset, base, components, utilities`) — native cascade layers avoid specificity wars.
+- **Modern CSS does the heavy lifting:** `clamp()` fluid type, container queries, `color-mix()`, `:has()`, grid/flexbox. Nothing that needed a preprocessor or utility framework in 2019 still does in 2026.
+
+**Why not the other candidates:**
+
+| Alternative | Verdict |
+| --- | --- |
+| Sass/SCSS | Fine, but modern CSS covers ~95% of it; adds a build step for little gain |
+| vanilla-extract / PandaCSS | Type-safe CSS-in-TS; good libraries, but overkill for a single art-directed site and their APIs slow down freeform design iteration |
+| styled-components / Emotion | Runtime cost and SSR friction in App Router; legacy choice now |
+
+If you later miss type-safety on tokens, generate TypeScript constants from `tokens.css` in a build step — but start with the plain CSS setup; it's the least machinery that fully does the job.
 
 ---
 
@@ -129,7 +150,7 @@ Core ideas to implement:
 
 | Phase | Scope | Output |
 | --- | --- | --- |
-| **0 — Setup** (0.5 wk) | Next.js + TS + Tailwind + R3F scaffold, lint, deploy pipeline to Vercel on day one | Empty site live on a URL |
+| **0 — Setup** (0.5 wk) | Next.js + TS + CSS + R3F scaffold, lint, deploy pipeline to Vercel on day one | Empty site live on a URL |
 | **1 — Landscape MVP** (2–3 wk) | Route A/C terrain + palette shader + fog + sky; free-fly camera for tuning | Your world exists in the browser |
 | **2 — Camera & scroll** (1–2 wk) | Lenis + GSAP timeline, spline camera rig, nav transitions, section reveal logic | The "basement feel" |
 | **3 — Content & CMS** (1–2 wk) | Sections (work/services/about/contact), CMS or MDX wiring, contact form server action | A real website |
