@@ -61,44 +61,37 @@ If you later miss type-safety on tokens, generate TypeScript constants from `tok
 
 ---
 
-## 3. Creating Your Own Landscape — Three Routes
+## 3. Creating Your Own Landscape — Blender-Authored (Route B)
 
-### Route A — Procedural terrain (100% code)
+**Everything in the scene is authored in Blender.** Terrain, landmarks, props, cameras — the entire world is sculpted, composed, and lit in Blender, then exported as optimized glTF and loaded into the browser. This is the basement.studio approach, and it gives you full art direction over every pixel of the landscape.
 
-Generate the terrain in the browser from noise. No DCC software needed.
+> **Why not procedural?** Procedural terrain looks "generated" and gives you no precise control over composition. With Blender, you decide exactly where every ridge, valley, cabin, and camera angle sits. The world map in `Plans/03 - world-map.md` documents the coordinate system and placement of every element.
 
-1. **Heightfield:** layer Simplex/Perlin noise (FBM — 4–6 octaves) on a large `PlaneGeometry` (e.g. 256×256 segments). Libraries: `simplex-noise` npm package, or implement FBM in a GLSL vertex shader and displace vertices on the GPU.
-2. **Shaping:** apply *domain warping* (warp the noise input by another noise) to get natural, non-generic ridges; mask a flat area where your content "buildings" will sit.
-3. **Coloring:** custom `ShaderMaterial` — map height/slope to a curated palette (snow caps, rock, grass, sand), add slope-based rock blending. This is where your art direction lives.
-4. **Atmosphere:** exponential fog matching the background color, a water plane with a subtle ripple shader, a big gradient sky (shader ball or scene background).
-5. **Props:** scatter instanced meshes (trees, rocks) with `drei`'s `<Instances>` / `<Merged>` + deterministic random placement seeded by position.
+### The Blender → Web Pipeline
 
-- ✅ Cheapest, fully unique, tiny payload (a few KB), endlessly re-generatable
-- ❌ Harder to art-direct precisely; looks "generated" unless you invest in the shader
-
-### Route B — Modeled terrain (the basement way)
-
-Author the landscape as art in Blender, then optimize for the web.
-
-1. **Model:** sculpt or model the terrain in Blender; low-poly stylized or high-detail kitbash as you prefer.
-2. **Retopologize / decimate** to a web-friendly polycount (target < 150k–300k triangles for hero terrain).
-3. **UV + texture:** vertex colors, gradient materials, or hand-painted textures. Keep it stylized — photoreal textures blow the payload budget.
+1. **Model the terrain:** sculpt the Hemsedal landscape in Blender — valleys, ridges, peaks, a frozen lake bed. Low-poly stylized. Target < 150k–300k triangles for the hero terrain mesh.
+2. **Author landmarks & props:** cabins, stone cairns, ski lift pylons, trees, rocks — all placed directly in the terrain scene at their final world positions (see the world map).
+3. **UV + vertex colors:** use vertex colors for the palette (snow, rock, grass, valley). Keep it stylized — photoreal textures blow the payload budget. Hand-painted textures only where vertex colors aren't enough.
 4. **Bake lighting:** bake an AO/lightmap into a texture instead of using real-time shadows (exactly what basement did — shadows off, baked light in the texture).
-5. **Export & compress:** export glTF → run `gltf-transform` (Draco or Meshopt compression) → convert textures to KTX2/Basis (`toktx`) so the GPU download is small.
-6. **Load in R3F:** `useGLTF` with `Suspense`, optionally split the scene into chunks and stream them in.
+5. **Organize with collections:** use Blender collections to separate terrain, landmarks, skybox markers, and camera targets. Name everything descriptively.
+6. **Export & compress:** export glTF → run `gltf-transform` (Draco or Meshopt compression) → convert textures to KTX2/Basis (`toktx`) so the GPU download is small. Budget: 5–10 MB total.
+7. **Load in R3F:** `useGLTF` with `Suspense`. The terrain and landmarks arrive as one composed scene (or split into chunks for streaming).
 
-- ✅ Full art direction, unique identity, "authored" feel
+### What stays in shaders (not Blender)
+
+| Element | Why it's code |
+|---|---|
+| **Sky dome** | Gradient sky + sun glow — a simple sphere shader, cheap and infinitely tunable |
+| **Fog** | Exponential fog in the scene, color matched to the palette |
+| **Color grading** | Global post-process shader (exposure, contrast, split-toning, vignette) — the "film look" |
+| **Water** (optional) | A flat plane with a ripple shader at the frozen lake location |
+
+These are atmosphere, not geometry. They layer on top of the authored scene.
+
+- ✅ Full art direction, unique identity, "authored" feel, precise composition control
+- ✅ Every landmark and camera angle is placed exactly where you want it
 - ❌ Requires Blender skills + asset pipeline; heavier payload (budget 5–10 MB total)
-
-### Route C — Hybrid (recommended)
-
-**Procedural base + authored landmarks + shader atmosphere.**
-
-- Terrain heightfield generated procedurally (Route A) so you get a huge landscape for free.
-- 2–5 hand-modeled hero landmarks (a monolith, a cabin, a crashed satellite — whatever tells *your* story) placed at known coordinates; the camera path visits them.
-- All atmosphere (fog, sky, color grading, water) in shaders — cheap in bytes, expensive-looking.
-
-This gives basement-level visual identity at a fraction of the asset cost, and you can deepen the authored side later without touching the terrain code.
+- ❌ Terrain changes require a Blender round-trip (export → optimize → reload)
 
 ---
 
@@ -151,21 +144,23 @@ Core ideas to implement:
 | Phase | Scope | Output |
 | --- | --- | --- |
 | **0 — Setup** (0.5 wk) | Next.js + TS + CSS + R3F scaffold, lint, deploy pipeline to Vercel on day one | Empty site live on a URL |
-| **1 — Landscape MVP** (2–3 wk) | Route A/C terrain + palette shader + fog + sky; free-fly camera for tuning | Your world exists in the browser |
+| **1 — Landscape MVP** (3–4 wk) | Blender-authored terrain + landmarks, baked lighting, glTF pipeline; sky shader + fog; free-fly camera | Your world exists in the browser |
 | **2 — Camera & scroll** (1–2 wk) | Lenis + GSAP timeline, spline camera rig, nav transitions, section reveal logic | The "basement feel" |
 | **3 — Content & CMS** (1–2 wk) | Sections (work/services/about/contact), CMS or MDX wiring, contact form server action | A real website |
 | **4 — Art direction & polish** (2 wk) | Landmark props, postprocessing pass, loading screen, fonts/copy, audio (optional) | A distinctive site |
 | **5 — Perf & launch** (1 wk) | Budget enforcement, mobile degradation, fallbacks, SEO, analytics, OG images | Shipped |
 
-Phases 1–2 are the project's heart; everything after is conventional web work. Expect the landscape look-development loop (tweak noise → rebuild → tweak shader) to take many small iterations — budget for it.
+Phases 1–2 are the project's heart; everything after is conventional web work. Phase 1 is now Blender-heavy — expect the terrain sculpting and landmark modeling to take most of the time. The look-development loop (sculpt in Blender → export → view in browser → adjust) is slower than shader tweaking but gives far more control.
 
 ---
 
 ## 7. Key Risks
 
 - **Scope creep in the scene** — every prop is a mini-project. Ship 3 great landmarks, not 20 mediocre ones.
+- **Blender round-trip time** — terrain changes require sculpt → export → optimize → reload. Keep the world map (`Plans/03 - world-map.md`) updated so you don't lose track of positions between iterations.
+- **Payload budget** — Blender-authored scenes with textures can blow past 10 MB. Use gltf-transform aggressively (Draco + KTX2). Profile with `r3f-perf`.
 - **Mobile performance** — test on a real mid-range phone from week 2, not at the end.
-- **Shader debugging time** — GLSL iterations are slow if you rebuild constantly; use `drei`'s `<Leva>`-style live controls (Leva or tweakpane) for uniforms while tuning.
+- **Shader debugging time** — sky and grading shaders iterate slowly if you rebuild constantly; use Leva for live uniform tuning.
 - **Copying too closely** — basement's scene is recognizable; the further your palette, terrain, and camera language are from theirs, the better the site will do its job for you.
 
 ---
@@ -173,7 +168,9 @@ Phases 1–2 are the project's heart; everything after is conventional web work.
 ## 8. Starter Checklist
 
 - [ ] Scaffold Next.js + R3F + Lenis + GSAP; deploy skeleton
-- [ ] Procedural terrain with FBM noise + height/slope palette shader
+- [ ] Define world map & coordinate system (`Plans/03 - world-map.md`)
+- [ ] Model terrain + landmarks in Blender; bake lighting & vertex colors
+- [ ] Export glTF → optimize with gltf-transform → load in R3F
 - [ ] Fog + gradient sky; establish the palette (this *is* the brand)
 - [ ] Camera spline with 3 waypoint "areas"; scrub with scroll
 - [ ] DOM sections tied to camera arrival

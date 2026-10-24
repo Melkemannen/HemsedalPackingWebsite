@@ -462,10 +462,11 @@ Fix any issues. The build should succeed with the static placeholder page.
 
 When Phase 0 is complete, Phase 1 (Landscape MVP) starts with:
 
-1. Replace the smoke-test cube with a procedural terrain (FBM noise on a `PlaneGeometry`)
-2. Custom `ShaderMaterial` mapping height/slope to the palette in `tokens.css`
-3. Exponential fog + gradient sky matching `--color-bg`
-4. Free-fly camera (drei `OrbitControls` or custom) for tuning
-5. Iterate on the look — this is the heart of the project
+1. Read `Plans/03 - world-map.md` — define the coordinate system and layout
+2. Model terrain + landmarks in Blender (`assets/blender/hemsedal-landscape.blend`)
+3. Export glTF → optimize with gltf-transform → load in R3F via `World.tsx`
+4. Shader sky dome + scene fog matching `--color-bg`
+5. Free-fly camera for tuning
+6. Iterate on the look — this is the heart of the project
 
-The design tokens in `tokens.css` should be refined during Phase 1 to match whatever palette emerges from the terrain shader work.
+The design tokens in `tokens.css` should be refined during Phase 1 to match whatever palette emerges from the Blender vertex color work. The tokens must stay in sync with the Blender vertex colors and shader uniforms.

@@ -8,7 +8,7 @@
 
 Two goals: (1) learn 3D web development, (2) make sure trip-mates pack properly. The site is a 3D winter landscape of Hemsedal, Norway, with a packing checklist layered on top. The landscape is the brand; the checklist is the utility.
 
-**Current phase:** Phase 1 — Landscape MVP (procedural terrain + sky + free-fly camera working; landmarks and camera choreography upcoming).
+**Current phase:** Phase 1 — Landscape MVP (terrain and landmarks authored in Blender, exported as glTF, loaded into the browser; sky shader + fog + free-fly camera working).
 
 ---
 
@@ -24,7 +24,7 @@ Two goals: (1) learn 3D web development, (2) make sure trip-mates pack properly.
 | State | Zustand (installed, not yet used) |
 | Styling | CSS custom properties (design tokens) + CSS Modules — **no Tailwind** |
 | Lint / format | ESLint (flat config, core-web-vitals + TS) + Prettier |
-| Terrain | Procedural FBM noise with domain warping (GPU vertex displacement) |
+| Terrain | Authored in Blender (sculpted landscape), exported as glTF with baked vertex colors |
 | Assets | Blender → glTF 2.0 (.glb) → gltf-transform (Draco/KTX2) |
 
 ---
@@ -35,10 +35,16 @@ Two goals: (1) learn 3D web development, (2) make sure trip-mates pack properly.
 HemsedalPackingWebsite/
 ├── AGENTS.md                    # This file
 ├── README.md                    # Project vision + art direction decision points
+├── .cursorrules                 # Cursor IDE rules
+├── assets/
+│   └── blender/
+│       └── hemsedal-landscape.blend  # The Blender scene (source of truth for geometry)
 ├── Plans/                       # Phase-by-phase implementation plans
+│   ├── README.md                # Plan navigation guide
 │   ├── 0 - planWebsiteHemsedal.md       # Master plan (architecture, stack, roadmap)
 │   ├── 01 - plan-phase-0-setup.md        # Phase 0: scaffold (complete)
-│   └── 02 - plan-phase-1-landscape-mvp.md # Phase 1: landscape (in progress)
+│   ├── 02 - plan-phase-1-landscape-mvp.md # Phase 1: Blender-authored landscape (in progress)
+│   └── 03 - world-map.md        # World map — coordinate system, zones, landmark positions
 └── websitehemsedal/             # The Next.js app
     ├── AGENTS.md                # App-level agent rules (Next.js specifics)
     ├── package.json
@@ -47,14 +53,14 @@ HemsedalPackingWebsite/
     ├── .prettierrc
     ├── eslint.config.mjs
     ├── public/
-    │   └── models/              # Blender-exported .glb landmarks
+    │   └── models/
+    │       └── hemsedal-landscape.glb  # Optimized Blender export
     └── src/
         ├── app/                 # App Router (layout.tsx, page.tsx, globals.css)
-        ├── components/          # React components (Scene, Terrain, Sky, etc.)
+        ├── components/          # React components (World, Scene, Sky, etc.)
         ├── lib/
-        │   ├── shaders/         # GLSL shaders as TS exports
-        │   ├── terrain/         # Heightmap (CPU) + constants
-        │   ├── landmarks.ts     # Landmark definitions
+        │   ├── shaders/         # GLSL shaders (sky + grading only — no terrain shader)
+        │   ├── worldMap.ts      # World coordinates, zones, landmark references
         │   └── cameraPositions.ts # Saved hero camera shots
         └── styles/
             ├── tokens.css       # Design tokens (palette, type, spacing, z-index)
@@ -72,23 +78,25 @@ HemsedalPackingWebsite/
 
 ### React / R3F
 - All 3D components are client components (`"use client"`).
-- Shaders live in `src/lib/shaders/*.ts` as exported template strings, imported into components.
-- Leva `useControls` is used for all tunable visual parameters. Never hardcode a value that should be tunable — expose it via Leva and bake a default into `src/lib/terrain/constants.ts`.
+- Shaders live in `src/lib/shaders/*.ts` as exported template strings. Only **sky** and **grading** shaders exist — terrain is a Blender-authored mesh, not a shader.
+- The **Blender scene** (`assets/blender/hemsedal-landscape.blend`) is the source of truth for all geometry. Export → optimize → load via `useGLTF` in `World.tsx`.
+- Leva `useControls` is used for tunable visual parameters (sky colors, fog, grading). Never hardcode a value that should be tunable.
 - The `<Canvas>` is mounted once in `Scene.tsx`, fixed full-screen behind DOM content (`.canvas-container`).
 - DOM content scrolls over the canvas (`.content-layer`).
+- **World map:** `Plans/03 - world-map.md` defines all coordinates, zones, and landmark positions. `src/lib/worldMap.ts` mirrors it in code. Always update both when moving something.
 
 ### CSS / Design Tokens
 - **No Tailwind, no CSS-in-JS.** All styling is CSS custom properties + CSS Modules.
 - `src/styles/tokens.css` defines the entire design system: palette, fluid type scale, spacing rhythm, z-index layers, easing curves, breakpoints.
-- The palette in `tokens.css` **must mirror** the shader palette. When you change a color in one place, change it in both.
+- The palette in `tokens.css` **must mirror** the Blender vertex colors and shader colors. When you change a color in one place, change it in all three.
 - Use `clamp()` for fluid values. Use cascade layers (`@layer reset, base, components, utilities`).
 - Component-scoped styles go in CSS Modules colocated with the component (e.g., `Hero.module.css`).
 
 ### Shaders (GLSL)
-- Vertex shaders handle geometry displacement (terrain height from FBM noise).
-- Fragment shaders handle color (palette mapping by height/slope), lighting, fog, and color grading.
+- Only **sky** and **grading** shaders exist. Terrain is a Blender-authored mesh with baked vertex colors — no terrain shader.
+- Sky shader: gradient dome + sun glow. Grading shader: exposure, contrast, split-toning, vignette (the "film look").
 - All palette colors come from CSS custom properties (read via `getComputedStyle` at init, exposed in Leva).
-- CPU-side height function in `src/lib/terrain/heightmap.ts` must match the GLSL noise logic for landmark placement.
+- When the palette changes in `tokens.css`, repaint vertex colors in Blender and re-export the glTF.
 
 ### Prettier
 - Config in `websitehemsedal/.prettierrc`: semi-colons, double quotes, 2-space indent, 80 char width, trailing commas (es5).
@@ -116,13 +124,15 @@ npm run format       # Prettier write
 npm run format:check # Prettier check
 ```
 
-### The Tuning Loop (Phase 1 heart)
+### The Blender → Browser Loop (Phase 1 heart)
 
-1. `npm run dev` → open `localhost:3000`
-2. Leva panel appears top-right with all terrain, palette, lighting, sky, and grading controls
-3. **Tweak → observe → tweak.** Every change is live.
-4. When a value looks good, **bake it** into `src/lib/terrain/constants.ts` so it persists on reload
-5. For landmark placement: click the viewport to lock the pointer, fly with **WASD + Space/Shift**, note coordinates
+1. Open `assets/blender/hemsedal-landscape.blend`
+2. Sculpt terrain, place landmarks, paint vertex colors
+3. Export glTF → optimize with gltf-transform → save to `public/models/`
+4. `npm run dev` → see the result in the browser
+5. Tune sky, fog, and grading in the Leva panel
+6. **Update `Plans/03 - world-map.md`** if you moved anything
+7. Repeat
 
 ### Free-Fly Camera (dev only)
 
@@ -145,10 +155,10 @@ The project has 11 explicit art-direction decision points. Each maps to a specif
 | # | Decision | Where |
 |---|---|---|
 | 🎨 A | **Palette** (5–7 core colors) | `src/styles/tokens.css` + shader uniforms |
-| 🎨 B | **Terrain character** (peaks vs. hills) | Leva → "Terrain Shape" |
-| 🎨 C | **Landmark concepts** (2–3 hero landmarks) | Blender → `public/models/` |
-| 🎨 D | **Landmark placement** (where in the world) | `src/lib/landmarks.ts` |
-| 🎨 E | **Atmosphere mood** (fog, sky, time-of-day) | Leva → "Sky" + "Terrain Shape" |
+| 🎨 B | **Terrain character** (peaks vs. hills) | Blender sculpt → `assets/blender/hemsedal-landscape.blend` |
+| 🎨 C | **Landmark concepts** (2–3 hero landmarks) | Blender → `assets/blender/` → `public/models/` |
+| 🎨 D | **Landmark placement** (where in the world) | Blender + `Plans/03 - world-map.md` |
+| 🎨 E | **Atmosphere mood** (fog, sky, time-of-day) | Leva → "Sky" + scene fog |
 | 🎨 F | **Camera framing** (hero shots) | `src/lib/cameraPositions.ts` |
 | 🎨 G | **Color grading** (film look) | Leva → "Color Grading" |
 | 🎨 H | **Typography** | `src/app/layout.tsx` |
@@ -175,18 +185,16 @@ The project has 11 explicit art-direction decision points. Each maps to a specif
 
 | File | Purpose |
 |---|---|
+| `Plans/03 - world-map.md` | **World map** — coordinate system, zones, landmark positions, camera shots, packing item locations |
+| `assets/blender/hemsedal-landscape.blend` | **Blender scene** — source of truth for all geometry |
+| `websitehemsedal/public/models/hemsedal-landscape.glb` | Optimized glTF export of the Blender scene |
 | `websitehemsedal/src/components/Scene.tsx` | Canvas mount, scene composition, Leva panel |
-| `websitehemsedal/src/components/Terrain.tsx` | Procedural terrain mesh + shader + Leva controls |
-| `websitehemsedal/src/components/Sky.tsx` | Gradient sky dome + sun glow |
+| `websitehemsedal/src/components/World.tsx` | Loads the Blender glTF scene via `useGLTF` |
+| `websitehemsedal/src/components/Sky.tsx` | Gradient sky dome + sun glow shader |
 | `websitehemsedal/src/components/FreeFlyCamera.tsx` | Dev-only fly camera (WASD + mouse look) |
-| `websitehemsedal/src/components/Landmark.tsx` | glTF landmark loader + placement |
-| `websitehemsedal/src/lib/shaders/terrain.vert.ts` | GLSL: FBM noise displacement, slope calc |
-| `websitehemsedal/src/lib/shaders/terrain.frag.ts` | GLSL: palette mapping, lighting, fog, grading |
 | `websitehemsedal/src/lib/shaders/sky.vert.ts` | GLSL: sky dome vertex |
 | `websitehemsedal/src/lib/shaders/sky.frag.ts` | GLSL: sky gradient + sun glow |
-| `websitehemsedal/src/lib/terrain/constants.ts` | Baked default values (terrain, grading, sky) |
-| `websitehemsedal/src/lib/terrain/heightmap.ts` | CPU-side terrain height (for landmark Y placement) |
-| `websitehemsedal/src/lib/landmarks.ts` | Landmark definitions (path, position, rotation, scale) |
+| `websitehemsedal/src/lib/worldMap.ts` | Code mirror of the world map: zones, landmarks, bounds |
 | `websitehemsedal/src/lib/cameraPositions.ts` | Saved hero camera shots (for Phase 2 spline) |
 | `websitehemsedal/src/styles/tokens.css` | Design tokens — the brand |
 | `websitehemsedal/src/styles/base.css` | CSS reset + base layers + canvas/content z-index |
@@ -200,7 +208,7 @@ The project has 11 explicit art-direction decision points. Each maps to a specif
 | Phase | Status | Description |
 |---|---|---|
 | 0 — Setup | ✅ Complete | Next.js + TS + R3F + deps + design tokens + Prettier |
-| 1 — Landscape MVP | 🔄 In progress | Terrain, sky, free-fly camera done. Landmarks + camera choreography next. |
+| 1 — Landscape MVP | 🔄 In progress | Blender-authored terrain + landmarks, glTF pipeline, sky shader, fog, free-fly camera, color grading. See `Plans/03 - world-map.md`. |
 | 2 — Camera & Scroll | ⬜ Not started | Lenis + GSAP scroll-driven camera spline, nav transitions |
 | 3 — Content & CMS | ⬜ Not started | Packing checklist sections, copy, contact form |
 | 4 — Art Direction & Polish | ⬜ Not started | Postprocessing, loading screen, fonts, audio |
@@ -211,12 +219,14 @@ The project has 11 explicit art-direction decision points. Each maps to a specif
 ## Rules for AI Agents
 
 1. **Read before you write.** Always read the target file and its imports before editing.
-2. **Preserve the Next.js agent block** in `websitehemsedal/AGENTS.md` — it's auto-generated and re-added by `next dev`.
-3. **Tune via Leva, then bake.** Never hardcode a visual parameter. Expose it in Leva, tune it, then save the value to `constants.ts`.
-4. **CSS tokens mirror shader palette.** Change both or neither.
-5. **CPU heightmap must match GLSL.** If you change noise params in the shader, update `heightmap.ts` too.
-6. **Run `npm run format` and `npm run lint`** before considering any change done.
-7. **Don't install new dependencies** without a clear reason stated in the commit message.
-8. **The landscape is the brand.** Every visual decision should make the world feel more like Hemsedal, not more generic.
-9. **Phase plans are in `Plans/`.** Read the relevant phase plan before starting work on that phase.
-10. **Commit with the Mistral Vibe trailer** (see Git section above).
+2. **Read the world map.** `Plans/03 - world-map.md` is the source of truth for all spatial decisions. Check it before placing or moving anything.
+3. **Preserve the Next.js agent block** in `websitehemsedal/AGENTS.md` — it's auto-generated and re-added by `next dev`.
+4. **Tune via Leva for shaders.** Sky, fog, and grading parameters go through Leva. Never hardcode them.
+5. **Geometry changes happen in Blender.** Terrain, landmarks, and props are authored in `assets/blender/hemsedal-landscape.blend`. Export → optimize → reload. Don't try to generate geometry in code.
+6. **CSS tokens mirror Blender vertex colors and shader colors.** Change all three or none.
+7. **Update the world map when you move something.** Both `Plans/03 - world-map.md` (docs) and `src/lib/worldMap.ts` (code).
+8. **Run `npm run format` and `npm run lint`** before considering any change done.
+9. **Don't install new dependencies** without a clear reason stated in the commit message.
+10. **The landscape is the brand.** Every visual decision should make the world feel more like Hemsedal, not more generic.
+11. **Phase plans are in `Plans/`.** Read the relevant phase plan before starting work on that phase.
+12. **Commit with the Mistral Vibe trailer** (see Git section above).

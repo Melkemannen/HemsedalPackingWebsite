@@ -18,10 +18,10 @@ The code is the canvas — you are the painter. These are the moments where you 
 | # | Decision | What You Choose | Where | Phase |
 |---|----------|-----------------|-------|-------|
 | 🎨 **A** | **Palette** | 5–7 core colors that define the world (snow, rock, grass, sky, fog, accent). These become CSS tokens and shader uniforms. | `websitehemsedal/src/styles/tokens.css` | 1 |
-| 🎨 **B** | **Terrain character** | How dramatic are the mountains? Jagged peaks, rolling hills, wide valleys? Controlled by noise params in the Leva panel. | Leva → "Terrain Shape" | 1 |
-| 🎨 **C** | **Landmark concepts** | What are the 2–3 hero landmarks? A cabin, a stone cairn, a ski lift pylon? Sketch, then model in Blender. | Blender → `public/models/` | 1 |
-| 🎨 **D** | **Landmark placement** | Where does each landmark sit? On a ridge, in a valley, beside a trail? Compose the world. | `websitehemsedal/src/lib/landmarks.ts` | 1 |
-| 🎨 **E** | **Atmosphere mood** | Fog density, sky gradient, time-of-day feel. Crisp morning, moody dusk, blue hour? | Leva → "Sky" + "Terrain Shape" (fog) | 1 |
+| 🎨 **B** | **Terrain character** | How dramatic are the mountains? Jagged peaks, rolling hills, wide valleys? You sculpt this directly in Blender. | Blender → `assets/blender/hemsedal-landscape.blend` | 1 |
+| 🎨 **C** | **Landmark concepts** | What are the 2–3 hero landmarks? A cabin, a stone cairn, a ski lift pylon? Sketch, then model in Blender. | Blender → `assets/blender/` → `public/models/` | 1 |
+| 🎨 **D** | **Landmark placement** | Where does each landmark sit? On a ridge, in a valley, beside a trail? Compose the world in Blender, documented in the world map. | Blender + `Plans/03 - world-map.md` | 1 |
+| 🎨 **E** | **Atmosphere mood** | Fog density, sky gradient, time-of-day feel. Crisp morning, moody dusk, blue hour? | Leva → "Sky" + scene fog | 1 |
 | 🎨 **F** | **Camera framing** | Where does the camera rest? What are the hero shots that frame the landscape beautifully? | `websitehemsedal/src/lib/cameraPositions.ts` | 1 |
 | 🎨 **G** | **Color grading** | The "film look" — warm highlights, cool shadows, contrast, vignette. Subtle or bold. | Leva → "Color Grading" | 1 |
 | 🎨 **H** | **Typography** | Display font, body font. Geist is the default — replace with something that has more character. | `websitehemsedal/src/app/layout.tsx` | 4 |
@@ -29,4 +29,4 @@ The code is the canvas — you are the painter. These are the moments where you 
 | 🎨 **J** | **Motion personality** | How does the camera move? Smooth and cinematic, snappy and playful? Easing curves define the feel. | Phase 2 — GSAP timeline tuning | 2 |
 | 🎨 **K** | **Postprocessing style** | Bloom intensity, grain amount, depth-of-field strength. The difference between "film" and "WebGL demo." | Phase 4 — postprocessing stack | 4 |
 
-> **Rule of thumb:** If a parameter is exposed in the Leva panel or a CSS token, it's yours to tune. If it's hardcoded infrastructure, leave it. The tuning loops are where the magic happens — budget time for them.
+> **Rule of thumb:** If a parameter is exposed in the Leva panel or a CSS token, it's yours to tune. If it's baked into the Blender scene, change it in Blender and re-export. The Blender scene is the canvas — `Plans/03 - world-map.md` is the map. The tuning loops are where the magic happens — budget time for them.
