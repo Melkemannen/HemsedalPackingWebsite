@@ -1,0 +1,222 @@
+# AGENTS.md — Hemsedal Packing Website
+
+> **Purpose:** A scroll-driven, 3D-first winter landscape website for a Hemsedal ski trip packing checklist. Inspired by basement.studio — one persistent 3D scene behind DOM content, camera choreography driven by scroll.
+
+---
+
+## Project Overview
+
+Two goals: (1) learn 3D web development, (2) make sure trip-mates pack properly. The site is a 3D winter landscape of Hemsedal, Norway, with a packing checklist layered on top. The landscape is the brand; the checklist is the utility.
+
+**Current phase:** Phase 1 — Landscape MVP (procedural terrain + sky + free-fly camera working; landmarks and camera choreography upcoming).
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) + TypeScript (strict) + React Compiler |
+| 3D | three.js + @react-three/fiber v9 + @react-three/drei v10 |
+| Shaders | GLSL (stored as TS template strings in `src/lib/shaders/`) |
+| Tuning UI | Leva (dev-only live parameter panel) |
+| Scroll / motion | Lenis + GSAP (installed, not yet wired) |
+| State | Zustand (installed, not yet used) |
+| Styling | CSS custom properties (design tokens) + CSS Modules — **no Tailwind** |
+| Lint / format | ESLint (flat config, core-web-vitals + TS) + Prettier |
+| Terrain | Procedural FBM noise with domain warping (GPU vertex displacement) |
+| Assets | Blender → glTF 2.0 (.glb) → gltf-transform (Draco/KTX2) |
+
+---
+
+## Repository Structure
+
+```
+HemsedalPackingWebsite/
+├── AGENTS.md                    # This file
+├── README.md                    # Project vision + art direction decision points
+├── Plans/                       # Phase-by-phase implementation plans
+│   ├── 0 - planWebsiteHemsedal.md       # Master plan (architecture, stack, roadmap)
+│   ├── 01 - plan-phase-0-setup.md        # Phase 0: scaffold (complete)
+│   └── 02 - plan-phase-1-landscape-mvp.md # Phase 1: landscape (in progress)
+└── websitehemsedal/             # The Next.js app
+    ├── AGENTS.md                # App-level agent rules (Next.js specifics)
+    ├── package.json
+    ├── next.config.ts
+    ├── tsconfig.json
+    ├── .prettierrc
+    ├── eslint.config.mjs
+    ├── public/
+    │   └── models/              # Blender-exported .glb landmarks
+    └── src/
+        ├── app/                 # App Router (layout.tsx, page.tsx, globals.css)
+        ├── components/          # React components (Scene, Terrain, Sky, etc.)
+        ├── lib/
+        │   ├── shaders/         # GLSL shaders as TS exports
+        │   ├── terrain/         # Heightmap (CPU) + constants
+        │   ├── landmarks.ts     # Landmark definitions
+        │   └── cameraPositions.ts # Saved hero camera shots
+        └── styles/
+            ├── tokens.css       # Design tokens (palette, type, spacing, z-index)
+            └── base.css         # CSS reset + base layers
+```
+
+---
+
+## Code Conventions
+
+### TypeScript
+- Strict mode is on. No `any` without a comment explaining why.
+- Use `import type` for type-only imports.
+- Path alias: `@/*` → `./src/*`.
+
+### React / R3F
+- All 3D components are client components (`"use client"`).
+- Shaders live in `src/lib/shaders/*.ts` as exported template strings, imported into components.
+- Leva `useControls` is used for all tunable visual parameters. Never hardcode a value that should be tunable — expose it via Leva and bake a default into `src/lib/terrain/constants.ts`.
+- The `<Canvas>` is mounted once in `Scene.tsx`, fixed full-screen behind DOM content (`.canvas-container`).
+- DOM content scrolls over the canvas (`.content-layer`).
+
+### CSS / Design Tokens
+- **No Tailwind, no CSS-in-JS.** All styling is CSS custom properties + CSS Modules.
+- `src/styles/tokens.css` defines the entire design system: palette, fluid type scale, spacing rhythm, z-index layers, easing curves, breakpoints.
+- The palette in `tokens.css` **must mirror** the shader palette. When you change a color in one place, change it in both.
+- Use `clamp()` for fluid values. Use cascade layers (`@layer reset, base, components, utilities`).
+- Component-scoped styles go in CSS Modules colocated with the component (e.g., `Hero.module.css`).
+
+### Shaders (GLSL)
+- Vertex shaders handle geometry displacement (terrain height from FBM noise).
+- Fragment shaders handle color (palette mapping by height/slope), lighting, fog, and color grading.
+- All palette colors come from CSS custom properties (read via `getComputedStyle` at init, exposed in Leva).
+- CPU-side height function in `src/lib/terrain/heightmap.ts` must match the GLSL noise logic for landmark placement.
+
+### Prettier
+- Config in `websitehemsedal/.prettierrc`: semi-colons, double quotes, 2-space indent, 80 char width, trailing commas (es5).
+- Run `npm run format` before committing.
+
+### Git
+- Commit messages: short imperative subject, blank line, bullet-point body for multi-line changes.
+- Always include the Mistral Vibe co-author trailer:
+  ```
+  Generated by Mistral Vibe.
+  Co-Authored-By: Mistral Vibe <vibe@mistral.ai>
+  ```
+
+---
+
+## Development Workflow
+
+### Commands (run inside `websitehemsedal/`)
+
+```bash
+npm run dev          # Start dev server (localhost:3000)
+npm run build        # Production build (also type-checks)
+npm run lint         # ESLint
+npm run format       # Prettier write
+npm run format:check # Prettier check
+```
+
+### The Tuning Loop (Phase 1 heart)
+
+1. `npm run dev` → open `localhost:3000`
+2. Leva panel appears top-right with all terrain, palette, lighting, sky, and grading controls
+3. **Tweak → observe → tweak.** Every change is live.
+4. When a value looks good, **bake it** into `src/lib/terrain/constants.ts` so it persists on reload
+5. For landmark placement: click the viewport to lock the pointer, fly with **WASD + Space/Shift**, note coordinates
+
+### Free-Fly Camera (dev only)
+
+| Input | Action |
+|---|---|
+| Click viewport | Lock pointer (mouse look) |
+| `W` `A` `S` `D` | Move horizontally |
+| `Space` | Ascend |
+| `Shift` | Descend |
+| `Esc` | Release pointer lock |
+
+Remove or gate `FreeFlyCamera` behind `NODE_ENV` in Phase 2.
+
+---
+
+## Art Direction Framework (🎨)
+
+The project has 11 explicit art-direction decision points. Each maps to a specific file or Leva panel. **If a parameter is exposed in Leva or a CSS token, it's yours to tune. If it's hardcoded infrastructure, leave it.**
+
+| # | Decision | Where |
+|---|---|---|
+| 🎨 A | **Palette** (5–7 core colors) | `src/styles/tokens.css` + shader uniforms |
+| 🎨 B | **Terrain character** (peaks vs. hills) | Leva → "Terrain Shape" |
+| 🎨 C | **Landmark concepts** (2–3 hero landmarks) | Blender → `public/models/` |
+| 🎨 D | **Landmark placement** (where in the world) | `src/lib/landmarks.ts` |
+| 🎨 E | **Atmosphere mood** (fog, sky, time-of-day) | Leva → "Sky" + "Terrain Shape" |
+| 🎨 F | **Camera framing** (hero shots) | `src/lib/cameraPositions.ts` |
+| 🎨 G | **Color grading** (film look) | Leva → "Color Grading" |
+| 🎨 H | **Typography** | `src/app/layout.tsx` |
+| 🎨 I | **Copy & voice** | `src/app/` content |
+| 🎨 J | **Motion personality** (camera easing) | Phase 2 — GSAP timeline |
+| 🎨 K | **Postprocessing style** (bloom, grain, DOF) | Phase 4 — postprocessing stack |
+
+### Current Palette (🎨 A — refine freely)
+
+| Token | Value | Role |
+|---|---|---|
+| `--color-snow` | `#e8edf2` | Snow caps, highlights |
+| `--color-rock` | `#3a4250` | Exposed rock, steep faces |
+| `--color-grass` | `#2d4a3e` | Alpine ground |
+| `--color-valley` | `#1a2028` | Low areas, valleys |
+| `--color-fog` | `#2a3542` | Atmospheric fog |
+| `--color-sky-top` | `#1c2836` | Sky zenith |
+| `--color-sky-hor` | `#4a6076` | Sky horizon |
+| `--color-accent` | `#e8a54b` | Warm amber — cabin lights, UI |
+
+---
+
+## Key Files Reference
+
+| File | Purpose |
+|---|---|
+| `websitehemsedal/src/components/Scene.tsx` | Canvas mount, scene composition, Leva panel |
+| `websitehemsedal/src/components/Terrain.tsx` | Procedural terrain mesh + shader + Leva controls |
+| `websitehemsedal/src/components/Sky.tsx` | Gradient sky dome + sun glow |
+| `websitehemsedal/src/components/FreeFlyCamera.tsx` | Dev-only fly camera (WASD + mouse look) |
+| `websitehemsedal/src/components/Landmark.tsx` | glTF landmark loader + placement |
+| `websitehemsedal/src/lib/shaders/terrain.vert.ts` | GLSL: FBM noise displacement, slope calc |
+| `websitehemsedal/src/lib/shaders/terrain.frag.ts` | GLSL: palette mapping, lighting, fog, grading |
+| `websitehemsedal/src/lib/shaders/sky.vert.ts` | GLSL: sky dome vertex |
+| `websitehemsedal/src/lib/shaders/sky.frag.ts` | GLSL: sky gradient + sun glow |
+| `websitehemsedal/src/lib/terrain/constants.ts` | Baked default values (terrain, grading, sky) |
+| `websitehemsedal/src/lib/terrain/heightmap.ts` | CPU-side terrain height (for landmark Y placement) |
+| `websitehemsedal/src/lib/landmarks.ts` | Landmark definitions (path, position, rotation, scale) |
+| `websitehemsedal/src/lib/cameraPositions.ts` | Saved hero camera shots (for Phase 2 spline) |
+| `websitehemsedal/src/styles/tokens.css` | Design tokens — the brand |
+| `websitehemsedal/src/styles/base.css` | CSS reset + base layers + canvas/content z-index |
+| `websitehemsedal/src/app/page.tsx` | Home page: mounts Scene + title overlay |
+| `websitehemsedal/src/app/layout.tsx` | Root layout, fonts, metadata |
+
+---
+
+## Phase Status
+
+| Phase | Status | Description |
+|---|---|---|
+| 0 — Setup | ✅ Complete | Next.js + TS + R3F + deps + design tokens + Prettier |
+| 1 — Landscape MVP | 🔄 In progress | Terrain, sky, free-fly camera done. Landmarks + camera choreography next. |
+| 2 — Camera & Scroll | ⬜ Not started | Lenis + GSAP scroll-driven camera spline, nav transitions |
+| 3 — Content & CMS | ⬜ Not started | Packing checklist sections, copy, contact form |
+| 4 — Art Direction & Polish | ⬜ Not started | Postprocessing, loading screen, fonts, audio |
+| 5 — Perf & Launch | ⬜ Not started | Mobile degradation, SEO, analytics, launch |
+
+---
+
+## Rules for AI Agents
+
+1. **Read before you write.** Always read the target file and its imports before editing.
+2. **Preserve the Next.js agent block** in `websitehemsedal/AGENTS.md` — it's auto-generated and re-added by `next dev`.
+3. **Tune via Leva, then bake.** Never hardcode a visual parameter. Expose it in Leva, tune it, then save the value to `constants.ts`.
+4. **CSS tokens mirror shader palette.** Change both or neither.
+5. **CPU heightmap must match GLSL.** If you change noise params in the shader, update `heightmap.ts` too.
+6. **Run `npm run format` and `npm run lint`** before considering any change done.
+7. **Don't install new dependencies** without a clear reason stated in the commit message.
+8. **The landscape is the brand.** Every visual decision should make the world feel more like Hemsedal, not more generic.
+9. **Phase plans are in `Plans/`.** Read the relevant phase plan before starting work on that phase.
+10. **Commit with the Mistral Vibe trailer** (see Git section above).
