@@ -3,12 +3,9 @@
 import { Canvas } from "@react-three/fiber";
 import { Suspense } from "react";
 import { Leva } from "leva";
-import Terrain from "./Terrain";
+import World from "./World";
 import Sky from "./Sky";
-import Landmark from "./Landmark";
 import FreeFlyCamera from "./FreeFlyCamera";
-import { LANDMARKS } from "@/lib/landmarks";
-import { getTerrainHeight } from "@/lib/terrain/heightmap";
 
 export default function Scene() {
   return (
@@ -24,20 +21,20 @@ export default function Scene() {
         {/* Scene background matches fog color */}
         <color attach="background" args={["#1a2028"]} />
 
-        {/* Lighting for landmarks (terrain uses its own shader lighting) */}
-        <ambientLight intensity={0.3} color="#334455" />
+        {/* Scene fog */}
+        <fog attach="fog" args={["#2a3542", 80, 400]} />
+
+        {/* Lighting — vertex colors carry the palette, this adds depth */}
+        <ambientLight intensity={0.4} color="#334455" />
         <directionalLight
           position={[50, 80, 30]}
-          intensity={1.2}
+          intensity={1.0}
           color="#fff5e0"
         />
 
         <Suspense fallback={null}>
           <Sky />
-          <Terrain />
-          {LANDMARKS.map((lm) => (
-            <Landmark key={lm.id} def={lm} terrainHeightFn={getTerrainHeight} />
-          ))}
+          <World />
         </Suspense>
 
         {/* Dev-only free-fly camera — remove in Phase 2 */}
