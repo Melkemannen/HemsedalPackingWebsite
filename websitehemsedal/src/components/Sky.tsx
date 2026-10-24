@@ -6,7 +6,10 @@ import { useFrame } from "@react-three/fiber";
 import { useControls } from "leva";
 import { skyVertexShader } from "@/lib/shaders/sky.vert";
 import { skyFragmentShader } from "@/lib/shaders/sky.frag";
-import { SKY_DEFAULTS } from "@/lib/terrain/constants";
+
+const SKY_DEFAULTS = {
+  gradientPower: 0.6,
+} as const;
 
 function getCSSColorHex(name: string): string {
   if (typeof window === "undefined") return "#ffffff";
