@@ -1,0 +1,60 @@
+/* ============================================
+   DESIGN TOKENS — Hemsedal Packing Website
+   This file IS the brand. Mirror shader palette here.
+   ============================================ */
+
+:root {
+  /* ── Palette (placeholder — refine in Phase 1) ── */
+  --color-bg: #0a0f14;
+  --color-surface: #111820;
+  --color-text: #e8edf2;
+  --color-text-muted: #8a97a5;
+  --color-accent: #4da3ff;
+  --color-snow: #f0f4f8;
+  --color-rock: #3a4250;
+  --color-grass: #2d4a3e;
+
+  /* ── Typography ── */
+  --font-display: var(--font-geist-sans), system-ui, sans-serif;
+  --font-body: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+
+  /* Fluid type scale */
+  --step--1: clamp(0.75rem, 0.73rem + 0.11vw, 0.8rem);
+  --step-0: clamp(1rem, 0.96rem + 0.22vw, 1.125rem);
+  --step-1: clamp(1.25rem, 1.19rem + 0.33vw, 1.5rem);
+  --step-2: clamp(1.563rem, 1.43rem + 0.65vw, 1.999rem);
+  --step-3: clamp(1.953rem, 1.71rem + 1.21vw, 2.666rem);
+  --step-4: clamp(2.441rem, 2.05rem + 1.96vw, 3.552rem);
+  --step-5: clamp(3.052rem, 2.46rem + 2.96vw, 4.736rem);
+
+  /* ── Spacing rhythm ── */
+  --space-xs: clamp(0.25rem, 0.23rem + 0.11vw, 0.375rem);
+  --space-s: clamp(0.5rem, 0.46rem + 0.22vw, 0.75rem);
+  --space-m: clamp(1rem, 0.89rem + 0.54vw, 1.5rem);
+  --space-l: clamp(1.5rem, 1.28rem + 1.09vw, 2.25rem);
+  --space-xl: clamp(2rem, 1.61rem + 1.96vw, 3.5rem);
+  --space-2xl: clamp(3rem, 2.21rem + 3.91vw, 5.5rem);
+
+  /* ── Z-index layers ── */
+  --z-canvas: -1;
+  --z-content: 1;
+  --z-nav: 10;
+  --z-overlay: 100;
+  --z-modal: 1000;
+
+  /* ── Easing ── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-expo: cubic-bezier(0.87, 0, 0.13, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Breakpoints (for JS consumption if needed) ── */
+  --bp-mobile: 480px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1024px;
+  --bp-wide: 1440px;
+
+  /* ── Layout ── */
+  --content-max: 72rem;
+  --content-padding: clamp(1rem, 4vw, 3rem);
+}
